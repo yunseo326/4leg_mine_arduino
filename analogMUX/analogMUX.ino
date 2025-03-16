@@ -33,7 +33,7 @@ for(int i = 0; i < 16; i ++){
   } 
   }
   
-  int readMux(int channel)  { 
+int readMux(int channel)  { 
   int controlPin[] = {s0, s1, s2, s3}; 
   int muxChannel[16][4]={ {0,0,0,0},  
   {1,0,0,0}, //channel 1 
@@ -56,7 +56,8 @@ for(int i = 0; i < 16; i ++){
   for(int i = 0; i < 4; i ++){ 
     digitalWrite(controlPin[i], muxChannel[channel][i]); 
     } 
-    //read the value at the SIG pin 
-    int val = analogRead(SIG_pin); //return the value 
-    return val; 
-    } 
+
+  //read the value at the SIG pin 
+  int val = analogRead(SIG_pin); //return the value 
+  return val; 
+} 

@@ -247,7 +247,12 @@ void loop() {
     if (!dmpReady) return;
 
     // wait for MPU interrupt or extra packet(s) available
+    Serial.print("mpuInterrupt");Serial.println(mpuInterrupt);
+    Serial.print("fifoCount");Serial.println(fifoCount);
     while (!mpuInterrupt && fifoCount < packetSize) {
+        Serial.print("mpuInterrupt");Serial.println(mpuInterrupt);
+        Serial.print("fifoCount");Serial.println(fifoCount);
+
         // other program behavior stuff here
         // .
         // .

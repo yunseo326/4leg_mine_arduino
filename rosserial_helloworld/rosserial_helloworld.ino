@@ -52,11 +52,25 @@ int SIG_pin = 0;
 
 int analogValues[2][8]; // [0도/180도][채널0~3]
 int num = 8;  //4개라면 for문 때문에 1빼줌
+int analog_feedback[1][8]; // [0도/180도][채널0~3]
 
 int angle_control = 0;
 bool increasing = true;  // 증가(true) / 감소(false) 여부를 저장하는 변수
 
 
+
+#include <ros.h>
+#include <std_msgs/Int16MultiArray.h>
+#include <geometry_msgs/Quaternion.h>
+
+ros::NodeHandle  nh;
+
+geometry_msgs::Quaternion imu_msg;
+geometry_msgs::Vector3 euler_msg;
+std_msgs::Int16MultiArray analog_feedback_msgs;
+
+ros::Publisher mpu("mpu6050", &imu_msg);
+ros::Publisher angle("pca9685", &analog_feedback_msgs);
 
 // ================================================================
 // ===                      INITIAL SETUP                       ===
@@ -148,6 +162,15 @@ void setup() {
 
     // pca9685 setting
     pca9685_setting();
+
+    // rosserial setting
+    rosserial_settings();
+}
+
+void rosserial_settings(){
+  nh.initNode();
+  nh.advertise(mpu);
+  nh.advertise(angle);
 }
 
 void pca9685_setting(){
@@ -218,7 +241,7 @@ void loop() {
             increasing = true;  // 10에 도달하면 증가 모드로 변경
         }
     }
-    check_angle();
+    save_angle();
 
 
     // reset interrupt flag and get INT_STATUS byte
@@ -238,20 +261,29 @@ void loop() {
         // (this lets us immediately read more without waiting for an interrupt)
         fifoCount -= packetSize;
 
-        #ifdef OUTPUT_READABLE_QUATERNION
-            // display quaternion values in easy matrix form: w x y z
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            Serial.print("quat\t");
-            Serial.print(q.w);
-            Serial.print("\t");
-            Serial.print(q.x);
-            Serial.print("\t");
-            Serial.print(q.y);
-            Serial.print("\t");
-            Serial.println(q.z);
-        #endif
+        
+        // display quaternion values in easy matrix form: w x y z
+        mpu.dmpGetQuaternion(&q, fifoBuffer);
+        Serial.print("quat\t");
+        Serial.print(q.w);
+        Serial.print("\t");
+        Serial.print(q.x);
+        Serial.print("\t");
+        Serial.print(q.y);
+        Serial.print("\t");
+        Serial.println(q.z);
+        
+      
+        imu_msg.data = q;
+        mpu.publish( &imu_msg );
 
     }
+
+    analog_feedback_msgs.data = analog_feedback[0];
+    angle.publish( &analog_feedback_msgs );
+
+    nh.spinOnce();
+    delay(1000);
 }
 
 
@@ -259,17 +291,17 @@ void control_servo(int angle){
     int pul = map(angle, 0, 180, SERVOMIX, SERVOMAX); // 0~180도 값을 150~600 PWM 값으로 변환
     for (int ch = 0; ch<num; ch++){
       pwm.setPWM(ch, 0, pul); // 채널 , pwm 숫자1, pwm 숫자2  뒤에가 얼마나 많이 해줄꺼지에 대한 내용
-      delay(1);
     }   
 }
 
-void check_angle(){
+void save_angle(){
   for(int ch = 0; ch <num; ch ++){ 
       Serial.print("Value at channel "); 
       Serial.print(ch); Serial.print(": "); 
-      Serial.println(map(readMux(ch),analogValues[0][ch],analogValues[1][ch],0,180));
-      delay(5); 
-        } 
+      
+      analog_feedback[0][ch] = map(readMux(ch),analogValues[0][ch],analogValues[1][ch],0,180);
+      Serial.println(analog_feedback[0][ch]);
+      } 
 }
 
 int readMux(int channel)  { 
@@ -301,3 +333,4 @@ int readMux(int channel)  {
   } 
     
   
+
